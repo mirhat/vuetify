@@ -9,6 +9,16 @@ test('VCard.vue', () => {
     expect(wrapper.html()).toMatchSnapshot()
   })
 
+  it('should render card with img', () => {
+    const wrapper = mount(VCard, {
+      propsData: {
+        img: 'image.jpg'
+      }
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
+  })
+
   it('should render a flat card', () => {
     const wrapper = mount(VCard, {
       propsData: {
@@ -27,6 +37,17 @@ test('VCard.vue', () => {
     })
 
     expect(wrapper.html()).toMatchSnapshot()
+  })
+
+  it('should render a colored card', () => {
+    const wrapper = mount(VCard, {
+      propsData: {
+        color: 'blue lighten-1'
+      }
+    })
+
+    expect(wrapper.element.classList).toContain('blue')
+    expect(wrapper.element.classList).toContain('lighten-1')
   })
 
   it('should render a tile card', () => {

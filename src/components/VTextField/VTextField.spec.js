@@ -1,5 +1,7 @@
 import { test } from '~util/testing'
+import Vue from 'vue/dist/vue.common'
 import VTextField from '~components/VTextField'
+import VProgressLinear from '~components/VProgressLinear'
 
 test('VTextField.js', ({ mount }) => {
   it('should render component and match snapshot', () => {
@@ -287,5 +289,66 @@ test('VTextField.js', ({ mount }) => {
     await wrapper.vm.$nextTick()
 
     expect(change.mock.calls.length).toBe(0)
+  })
+
+  it('should render component with async loading and match snapshot', () => {
+    const wrapper = mount(VTextField, {
+      components: {
+        VProgressLinear
+      },
+      propsData: {
+        loading: true
+      }
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
+  })
+
+  it('should render component with async loading and custom progress and match snapshot', () => {
+    const progress = Vue.component('test', {
+      components: {
+        VProgressLinear
+      },
+      render (h) {
+        return h('v-progress-linear', {
+          props: {
+            indeterminate: true,
+            height: 7,
+            color: 'orange'
+          }
+        })
+      }
+    })
+
+    const wrapper = mount(VTextField, {
+      propsData: {
+        loading: true
+      },
+      slots: {
+        progress: [progress]
+      }
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
+  })
+
+  it('should display the number 0', async () => {
+    const wrapper = mount(VTextField, {
+      propsData: { value: 0 }
+    })
+
+    expect(wrapper.vm.$refs.input.value).toBe('0')
+  })
+
+  it('should reset internal change on blur', async () => {
+    const wrapper = mount(VTextField)
+
+    wrapper.setProps({ value: 'foo' })
+    wrapper.vm.internalChange = true
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.internalChange).toBe(true)
+    wrapper.vm.blur()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.internalChange).toBe(false)
   })
 })

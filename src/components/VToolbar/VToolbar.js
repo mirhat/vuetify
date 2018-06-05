@@ -1,12 +1,13 @@
 require('../../stylus/components/_toolbar.styl')
 
 import Applicationable from '../../mixins/applicationable'
+import Colorable from '../../mixins/colorable'
 import Themeable from '../../mixins/themeable'
 
 export default {
   name: 'v-toolbar',
 
-  mixins: [Applicationable, Themeable],
+  mixins: [Applicationable, Colorable, Themeable],
 
   data: () => ({
     heights: {
@@ -15,11 +16,8 @@ export default {
       desktop: 64,
       dense: 48
     },
-    denseHeight: 48,
-    defaultHeight: 56,
-    prominentHeight: 64,
     isExtended: false,
-    isScrolling: false,
+    isScrollingProxy: false,
     marginTop: 0,
     previousScroll: null,
     target: null
@@ -36,6 +34,10 @@ export default {
     flat: Boolean,
     floating: Boolean,
     height: [Number, String],
+    manualScroll: {
+      type: Boolean,
+      default: null
+    },
     prominent: Boolean,
     scrollOffScreen: Boolean,
     scrollTarget: String,
@@ -47,19 +49,26 @@ export default {
 
   computed: {
     computedHeight () {
-      if (this.height) return this.height
-      if (this.dense) return this.dense
+      if (this.height) return parseInt(this.height)
+      if (this.dense) return this.heights.dense
+
       if (this.prominent ||
         this.$vuetify.breakpoint.mdAndUp
       ) return this.heights.desktop
-      if (this.$vuetify.breakpoint.clientWidth >
-        this.$vuetify.breakpoint.clientHeight
-      ) return this.mobileLandscape
+
+      if (this.$vuetify.breakpoint.width >
+        this.$vuetify.breakpoint.height
+      ) return this.heights.mobileLandscape
 
       return this.heights.mobile
     },
+    computedMarginTop () {
+      if (!this.app) return this.marginTop
+
+      return this.marginTop + this.$vuetify.application.bar
+    },
     classes () {
-      return {
+      return this.addBackgroundColorClassChecks({
         'toolbar': true,
         'elevation-0': this.flat,
         'toolbar--absolute': this.absolute,
@@ -72,6 +81,16 @@ export default {
         'toolbar--extended': this.isExtended,
         'theme--dark': this.dark,
         'theme--light': this.light
+      })
+    },
+    isScrolling: {
+      get () {
+        return this.manualScroll != null
+          ? this.manualScroll
+          : this.isScrollingProxy
+      },
+      set (val) {
+        this.isScrollingProxy = val
       }
     },
     paddingLeft () {
@@ -85,20 +104,33 @@ export default {
       return this.$vuetify.application.right
     },
     styles () {
-      return {
-        marginTop: this.marginTop,
-        paddingLeft: `${this.paddingLeft}px`,
-        paddingRight: `${this.paddingRight}px`
+      const style = {
+        marginTop: `${this.computedMarginTop}px`
       }
+
+      if (this.app) {
+        style.paddingRight = `${this.paddingRight}px`
+        style.paddingLeft = `${this.paddingLeft}px`
+      }
+
+      return style
     }
   },
 
   watch: {
-    isScrolling (val) {
-      if (!val) this.marginTop = 0
-      else (this.marginTop = `${-this.$refs.content.clientHeight - 6}px`)
+    clippedLeft (val) {
       this.updateApplication()
+    },
+    clippedRight (val) {
+      this.updateApplication()
+    },
+    isScrolling (val) {
+      this.whenScrolled(val)
     }
+  },
+
+  mounted () {
+    this.whenScrolled(this.isScrolling)
   },
 
   destroyed () {
@@ -125,7 +157,7 @@ export default {
         this.previousScroll = currentScroll
       }
 
-      this.isScrolling = this.previousScroll < currentScroll
+      this.isScrollingProxy = this.previousScroll < currentScroll
 
       this.previousScroll = currentScroll
     },
@@ -137,6 +169,13 @@ export default {
         : this.isExtended && !this.isScrolling
           ? this.computedHeight * 2
           : this.computedHeight
+    },
+    whenScrolled (val) {
+      this.marginTop = val
+        ? -this.$refs.content.clientHeight - 6
+        : 0
+
+      this.updateApplication()
     }
   },
 

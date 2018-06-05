@@ -1,29 +1,70 @@
 require('../../stylus/components/_system-bars.styl')
 
+import Applicationable from '../../mixins/applicationable'
+import Colorable from '../../mixins/colorable'
 import Themeable from '../../mixins/themeable'
 
 export default {
   name: 'v-system-bar',
 
-  functional: true,
-
-  mixins: [Themeable],
+  mixins: [Applicationable, Colorable, Themeable],
 
   props: {
+    absolute: Boolean,
+    fixed: Boolean,
     lightsOut: Boolean,
     status: Boolean,
     window: Boolean
   },
 
-  render (h, { data, props, children }) {
-    data.staticClass = (`system-bar ${data.staticClass || ''}`).trim()
+  computed: {
+    classes () {
+      return this.addBackgroundColorClassChecks(Object.assign({
+        'system-bar--lights-out': this.lightsOut,
+        'system-bar--absolute': this.absolute,
+        'system-bar--fixed': this.fixed,
+        'system-bar--status': this.status,
+        'system-bar--window': this.window
+      }, this.themeClasses))
+    },
+    computedHeight () {
+      return this.window ? 32 : 24
+    }
+  },
 
-    if (props.dark) data.staticClass += ' theme--dark'
-    if (props.light) data.staticClass += ' theme--light'
-    if (props.status) data.staticClass += ' system-bar--status'
-    if (props.window) data.staticClass += ' system-bar--window'
-    if (props.lightsOut) data.staticClass += ' system-bar--lights-out'
+  watch: {
+    window () {
+      this.updateApplication()
+    },
+    fixed () {
+      this.updateApplication()
+    },
+    absolute () {
+      this.updateApplication()
+    }
+  },
 
-    return h('div', data, children)
+  methods: {
+    updateApplication () {
+      if (this.app && this.$vuetify) {
+        this.$vuetify.application.bar = (this.fixed || this.absolute) ? this.computedHeight : 0
+      }
+    }
+  },
+
+  destroyed () {
+    if (this.app && this.$vuetify) this.$vuetify.application.bar = 0
+  },
+
+  render (h) {
+    const data = {
+      staticClass: 'system-bar',
+      'class': this.classes,
+      style: {
+        height: `${this.computedHeight}px`
+      }
+    }
+
+    return h('div', data, this.$slots.default)
   }
 }

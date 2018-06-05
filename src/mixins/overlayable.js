@@ -6,7 +6,7 @@ export default {
       overlay: null,
       overlayOffset: 0,
       overlayTimeout: null,
-      overlayTransitionDuration: 500
+      overlayTransitionDuration: 500 + 150 // transition + delay
     }
   },
 
@@ -35,27 +35,24 @@ export default {
 
       this.overlay = document.createElement('div')
       this.overlay.className = 'overlay'
-      this.overlay.onclick = () => {
-        if (this.permanent) return
-        else if (!this.persistent) this.isActive = false
-        else if (this.isMobile) this.isActive = false
-      }
 
       if (this.absolute) this.overlay.className += ' overlay--absolute'
 
       this.hideScroll()
 
-      if (this.absolute) {
-        // Required for IE11
-        const parent = this.$el.parentNode
-        parent.insertBefore(this.overlay, parent.firstChild)
-      } else {
-        document.querySelector('[data-app]').appendChild(this.overlay)
-      }
+      const parent = this.absolute
+        ? this.$el.parentNode
+        : document.querySelector('[data-app]')
+
+      parent && parent.insertBefore(this.overlay, parent.firstChild)
 
       this.overlay.clientHeight // Force repaint
       requestAnimationFrame(() => {
         this.overlay.className += ' overlay--active'
+
+        if (this.activeZIndex !== undefined) {
+          this.overlay.style.zIndex = this.activeZIndex - 1
+        }
       })
 
       return true
@@ -85,6 +82,8 @@ export default {
      */
     scrollListener (e) {
       if (e.type === 'keydown') {
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
+
         const up = [38, 33]
         const down = [40, 34]
 
@@ -102,6 +101,8 @@ export default {
         this.checkPath(e)) e.preventDefault()
     },
     hasScrollbar (el) {
+      if (!el || el.nodeType !== Node.ELEMENT_NODE) return false
+
       const style = window.getComputedStyle(el)
       return ['auto', 'scroll'].includes(style['overflow-y']) && el.scrollHeight > el.clientHeight
     },
@@ -167,7 +168,7 @@ export default {
       }
     },
     hideScroll () {
-      if (this.$vuetify.breakpoint.mdAndDown) {
+      if (this.$vuetify.breakpoint.smAndDown) {
         document.documentElement.classList.add('overflow-y-hidden')
       } else {
         window.addEventListener('wheel', this.scrollListener)

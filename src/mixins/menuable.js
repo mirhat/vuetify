@@ -1,5 +1,23 @@
 import Positionable from './positionable'
 
+import Stackable from './stackable'
+
+const dimensions = {
+  activator: {
+    top: 0, left: 0,
+    bottom: 0, right: 0,
+    width: 0, height: 0,
+    offsetTop: 0, scrollHeight: 0
+  },
+  content: {
+    top: 0, left: 0,
+    bottom: 0, right: 0,
+    width: 0, height: 0,
+    offsetTop: 0, scrollHeight: 0
+  },
+  hasWindow: false
+}
+
 /**
  * Menuable
  *
@@ -11,32 +29,25 @@ import Positionable from './positionable'
  * As well as be manually positioned
  */
 export default {
-  mixins: [Positionable],
+  mixins: [Positionable, Stackable],
 
   data: () => ({
     absoluteX: 0,
     absoluteY: 0,
-    dimensions: {
-      activator: {
-        top: 0, left: 0,
-        bottom: 0, right: 0,
-        width: 0, height: 0,
-        offsetTop: 0, scrollHeight: 0
-      },
-      content: {
-        top: 0, left: 0,
-        bottom: 0, right: 0,
-        width: 0, height: 0,
-        offsetTop: 0, scrollHeight: 0
-      },
-      hasWindow: false
-    },
+    dimensions: Object.assign({}, dimensions),
     isContentActive: false,
-    pageYOffset: 0
+    pageYOffset: 0,
+    stackClass: 'menuable__content__active',
+    stackMinZIndex: 6
   }),
 
   props: {
-    activator: { default: null },
+    activator: {
+      default: null,
+      validator: val => {
+        return ['string', 'object'].includes(typeof val)
+      }
+    },
     allowOverflow: Boolean,
     maxWidth: {
       type: [Number, String],
@@ -63,6 +74,7 @@ export default {
       type: Number,
       default: 0
     },
+    offsetOverflow: Boolean,
     positionX: {
       type: Number,
       default: null
@@ -73,7 +85,7 @@ export default {
     },
     zIndex: {
       type: [Number, String],
-      default: 6
+      default: null
     }
   },
 
@@ -94,10 +106,6 @@ export default {
     }
   },
 
-  mounted () {
-    this.checkForWindow()
-  },
-
   methods: {
     absolutePosition () {
       return {
@@ -115,7 +123,13 @@ export default {
     calcLeft () {
       const a = this.dimensions.activator
       const c = this.dimensions.content
-      let left = this.left ? a.right - c.width : a.left
+      // Content always has a min width
+      // of its activator. This is applied
+      // when the menu is shown, but not
+      // reflected in the getBoundingClientRect
+      // method
+      const minWidth = a.width < c.width ? c.width : a.width
+      let left = this.left ? a.right - minWidth : a.left
 
       if (this.offsetX) left += this.left ? -a.width : a.width
       if (this.nudgeLeft) left -= this.nudgeLeft
@@ -124,6 +138,8 @@ export default {
       return left
     },
     calcTop () {
+      this.checkForWindow()
+
       const a = this.dimensions.activator
       const c = this.dimensions.content
       let top = this.top ? a.bottom - c.height : a.top
@@ -150,22 +166,33 @@ export default {
         left = (
           innerWidth -
           maxWidth -
-          (innerWidth > 1280 ? 30 : 12) // Account for scrollbar
+          (innerWidth > 600 ? 30 : 12) // Account for scrollbar
         )
-      } else if (this.left && left < 0) left = 12
+      }
+
+      if (left < 0) left = 12
 
       return left
     },
     calcYOverflow (top) {
       const documentHeight = this.getInnerHeight()
       const toTop = this.pageYOffset + documentHeight
+      const activator = this.dimensions.activator
       const contentHeight = this.dimensions.content.height
       const totalHeight = top + contentHeight
+      const isOverflowing = toTop < totalHeight
 
+      // If overflowing bottom and offset
+      // TODO: set 'bottom' position instead of 'top'
+      if (isOverflowing && this.offsetOverflow) {
+        top = this.pageYOffset + (activator.top - contentHeight)
       // If overflowing bottom
-      if (toTop < totalHeight && !this.allowOverflow) top = toTop - contentHeight - 12
+      } else if (isOverflowing && !this.allowOverflow) {
+        top = toTop - contentHeight - 12
       // If overflowing top
-      else if (top < this.pageYOffset && !this.allowOverflow) top = this.pageYOffset + 12
+      } else if (top < this.pageYOffset && !this.allowOverflow) {
+        top = this.pageYOffset + 12
+      }
 
       return top < 12 ? 12 : top
     },
@@ -181,7 +208,7 @@ export default {
       this.deactivate()
     },
     checkForWindow () {
-      this.hasWindow = window !== 'undefined'
+      this.hasWindow = typeof window !== 'undefined'
 
       if (this.hasWindow) {
         this.pageYOffset = this.getOffsetTop()
@@ -189,7 +216,11 @@ export default {
     },
     deactivate () {},
     getActivator () {
-      if (this.activator) return this.activator
+      if (this.activator) {
+        return typeof this.activator === 'string'
+          ? document.querySelector(this.activator)
+          : this.activator
+      }
 
       return this.$refs.activator.children
         ? this.$refs.activator.children[0]
@@ -235,23 +266,33 @@ export default {
     sneakPeek (cb) {
       requestAnimationFrame(() => {
         const el = this.$refs.content
-        const currentDisplay = el.style.display
+
+        if (!el || this.isShown(el)) return cb()
 
         el.style.display = 'inline-block'
         cb()
-        el.style.display = currentDisplay
+        el.style.display = 'none'
       })
     },
     startTransition () {
       requestAnimationFrame(() => (this.isContentActive = true))
     },
+    isShown (el) {
+      return el.style.display !== 'none'
+    },
     updateDimensions () {
+      const dimensions = {}
+
+      // Activator should already be shown
+      dimensions.activator = !this.hasActivator || this.absolute
+        ? this.absolutePosition()
+        : this.measure(this.getActivator())
+
+      // Display and hide to get dimensions
       this.sneakPeek(() => {
-        this.dimensions = {
-          activator: !this.hasActivator || this.absolute
-            ? this.absolutePosition() : this.measure(this.getActivator()),
-          content: this.measure(this.$refs.content)
-        }
+        dimensions.content = this.measure(this.$refs.content)
+
+        this.dimensions = dimensions
       })
     }
   }

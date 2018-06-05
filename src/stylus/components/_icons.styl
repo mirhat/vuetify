@@ -5,8 +5,8 @@
 icon($material)
   color: $material.icons.active
 
-  &.icon--disabled
-    color: $material.icons.inactive
+  &.icon--disabled:not(.input-group__append-icon)
+    color: $material.icons.inactive !important
 
 theme(icon, "icon")
 

@@ -6,16 +6,18 @@ export default {
   },
 
   props: {
+    activeClass: String,
     append: Boolean,
     disabled: Boolean,
     exact: Boolean,
+    exactActiveClass: String,
     href: [String, Object],
     to: [String, Object],
     nuxt: Boolean,
     replace: Boolean,
-    router: Boolean,
     ripple: Boolean,
-    tag: String
+    tag: String,
+    target: String
   },
 
   methods: {
@@ -44,17 +46,31 @@ export default {
       }
 
       if (this.to) {
+        // Add a special activeClass hook
+        // for component level styles
+        let activeClass = this.activeClass
+        let exactActiveClass = this.exactActiveClass || activeClass
+
+        if (this.proxyClass) {
+          activeClass += ' ' + this.proxyClass
+          exactActiveClass += ' ' + this.proxyClass
+        }
+
         tag = this.nuxt ? 'nuxt-link' : 'router-link'
-        data.props.to = this.to
-        data.props.exact = exact
-        data.props.activeClass = this.activeClass
-        data.props.append = this.append
-        data.props.replace = this.replace
+        Object.assign(data.props, {
+          to: this.to,
+          exact,
+          activeClass,
+          exactActiveClass,
+          append: this.append,
+          replace: this.replace
+        })
       } else {
         tag = this.href && 'a' || this.tag || 'a'
 
         if (tag === 'a') {
-          data.attrs.href = this.href || 'javascript:;'
+          if (this.href) data.attrs.href = this.href
+          if (this.target) data.attrs.target = this.target
         }
       }
 

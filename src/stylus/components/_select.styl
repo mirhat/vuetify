@@ -1,10 +1,24 @@
 @import '../bootstrap'
+@import '../theme'
+
+selects($material)
+  &.input-group
+    &--editable,
+    &--overflow,
+    &--segmented
+      .input-group__input:hover
+        background: $material.cards
+      
+      &.input-group--focused .input-group__input
+        background: $material.cards
+
+theme(selects, "input-group--select")
 
 .input-group--select
   // TODO: revisit this
   .input-group--select__autocomplete
     display: block
-    padding-bottom: 1px
+    height: 0px
 
     &--index
       opacity: 0 !important
@@ -15,14 +29,20 @@
     &.input-group__icon-clearable
       transition: none
 
+  &:not(.input-group--dirty),
+  &.input-group--focused
+    .input-group--select__autocomplete
+      padding-bottom: 1px
+      height: 30px
+
   &.input-group--focused
     .input-group--select__autocomplete
       display: inline-block
-      height: 30px
       opacity: 1
 
-    .input-group__append-icon:not(.input-group__icon-clearable)
-      transform: rotate(-180deg)
+    &.input-group--open
+      .input-group__append-icon:not(.input-group__icon-clearable)
+        transform: rotate(-180deg)
 
   .input-group__input
     cursor: pointer
@@ -41,8 +61,8 @@
 
     &__comma
       display: inline-flex
-      font-size: 16px
-      padding-right: 4px
+      font-size: $input-font-size
+      padding: 3px 4px 3px 0
 
       &--active
         color: inherit
@@ -57,6 +77,10 @@
   &.input-group--autocomplete.input-group--search-focused
     .input-group__selections__comma
       display: none
+
+.input-group--autocomplete
+  .input-group__selections
+    cursor: text
 
 
 .input-group
@@ -93,12 +117,8 @@
     .input-group__input
       transition: .3s $transition.swing
 
-    .input-group__input:hover
-      background: #fff
-
     &.input-group--focused
       .input-group__input
-        background: #fff
         elevation(8)
 
     label

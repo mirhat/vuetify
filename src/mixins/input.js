@@ -1,3 +1,4 @@
+import Loadable from './loadable'
 import Themeable from './themeable'
 import Validatable from './validatable'
 import VIcon from '../components/VIcon'
@@ -7,7 +8,7 @@ export default {
     VIcon
   },
 
-  mixins: [Themeable, Validatable],
+  mixins: [Loadable, Themeable, Validatable],
 
   data () {
     return {
@@ -21,7 +22,6 @@ export default {
   props: {
     appendIcon: String,
     appendIconCb: Function,
-    asyncLoading: Boolean,
     disabled: Boolean,
     hint: String,
     hideDetails: Boolean,
@@ -48,7 +48,7 @@ export default {
     inputGroupClasses () {
       return Object.assign({
         'input-group': true,
-        'input-group--async-loading': this.asyncLoading,
+        'input-group--async-loading': this.loading !== false,
         'input-group--focused': this.isFocused,
         'input-group--dirty': this.isDirty,
         'input-group--tab-focused': this.tabFocused,
@@ -91,7 +91,7 @@ export default {
       ) {
         messages = [this.genHint()]
       } else if (this.validations.length) {
-        messages = this.validations.map(v => this.genError(v))
+        messages = [this.genError(this.validations[0])]
       }
 
       return this.$createElement('transition-group', {
@@ -127,9 +127,6 @@ export default {
         : (this[`${type}IconCb`] || defaultCallback)
 
       return this.$createElement('v-icon', {
-        attrs: {
-          'aria-hidden': true
-        },
         'class': {
           [`input-group__${type}-icon`]: true,
           'input-group__icon-cb': !!callback,
@@ -194,21 +191,16 @@ export default {
         wrapperChildren.push(this.genIcon('append', defaultAppendCallback))
       }
 
-      if (this.asyncLoading) {
-        detailsChildren.push(this.$createElement('v-progress-linear', {
-          props: {
-            indeterminate: true,
-            height: 2
-          }
-        }))
-      }
+      const progress = this.genProgress()
+      progress && detailsChildren.push(progress)
 
       children.push(
         this.$createElement('div', {
           'class': 'input-group__input'
         }, wrapperChildren)
       )
-      detailsChildren.push(this.genMessages())
+
+      !this.hideDetails && detailsChildren.push(this.genMessages())
 
       if (this.counter) {
         detailsChildren.push(this.genCounter())

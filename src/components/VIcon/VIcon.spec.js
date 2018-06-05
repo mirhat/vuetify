@@ -11,6 +11,14 @@ test('VIcon.js', () => {
     expect(wrapper.element.className).toBe('material-icons icon')
   })
 
+  it('should render a colored component', () => {
+    const context = functionalContext({ props: { color: 'green lighten-1' } }, 'add')
+    const wrapper = mount(VIcon, context)
+
+    expect(wrapper.element.classList).toContain('green--text')
+    expect(wrapper.element.classList).toContain('text--lighten-1')
+  })
+
   it('should render a disabled component', () => {
     const context = functionalContext({ props: { disabled: true } }, 'add')
     const wrapper = mount(VIcon, context)
@@ -51,24 +59,6 @@ test('VIcon.js', () => {
     const wrapper = mount(VIcon, context)
 
     expect(wrapper.element.classList).toContain('icon--right')
-  })
-
-  it('should render correctly with deprecated prop fa', () => {
-    const context = functionalContext({ props: { fa: true } }, 'add')
-    const wrapper = mount(VIcon, context)
-
-    expect(wrapper.text()).toBe('')
-    expect(wrapper.element.className).toBe('fa icon fa-add')
-    expect("'fa' and 'mdi' will be deprecated").toHaveBeenTipped()
-  })
-
-  it('should render correctly with deprecated prop mdi', () => {
-    const context = functionalContext({ props: { mdi: true } }, 'add')
-    const wrapper = mount(VIcon, context)
-
-    expect(wrapper.text()).toBe('')
-    expect(wrapper.element.className).toBe('mdi icon mdi-add')
-    expect("'fa' and 'mdi' will be deprecated").toHaveBeenTipped()
   })
 
   it('should allow third-party icons when using <icon>- prefix', () => {

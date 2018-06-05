@@ -1,6 +1,6 @@
 /**
  * Menu keyable
- * 
+ *
  * @mixin
  *
  * Primarily used to support VSelect
@@ -33,8 +33,10 @@ export default {
 
   methods: {
     changeListIndex (e) {
-      // Up, Down, Enter
-      if ([40, 38, 13].includes(e.keyCode)) {
+      // Up, Down, Enter, Space
+      if ([40, 38, 13].includes(e.keyCode) ||
+        e.keyCode === 32 && !this.isActive
+      ) {
         e.preventDefault()
       }
 
@@ -58,20 +60,9 @@ export default {
       } else if (e.keyCode === 13 && this.listIndex !== -1) {
         this.tiles[this.listIndex].click()
       }
-
-      if (this.listIndex === -1) this.setActiveListIndex()
     },
     getTiles () {
       this.tiles = this.$refs.content.querySelectorAll('.list__tile')
-    },
-    setActiveListIndex () {
-      const tiles = Array.from(this.tiles || [])
-      tiles.forEach((t, i) => {
-        if (t.classList.contains('list__tile--active')) {
-          this.listIndex = i
-          return
-        }
-      })
     }
   }
 }

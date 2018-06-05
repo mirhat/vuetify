@@ -1,41 +1,58 @@
 require('../../stylus/components/_app.styl')
 
-import Breakpoint from '../../util/breakpoint'
-import Themeable from '../../mixins/themeable'
+// Component level mixins
+import AppTheme from './mixins/app-theme'
+import AppBreakpoint from './mixins/app-breakpoint'
 
+// Directives
 import Resize from '../../directives/resize'
+
+// Utilities
+import PointerSupport from '../../util/pointerSupport'
 
 export default {
   name: 'v-app',
 
-  mixins: [Breakpoint, Themeable],
+  mixins: [
+    AppBreakpoint,
+    AppTheme,
+    PointerSupport
+  ],
 
   directives: {
     Resize
   },
 
-  data: () => ({
-    resizeTimeout: {}
-  }),
-
   props: {
     id: {
       type: String,
       default: 'app'
+    },
+    dark: Boolean
+  },
+
+  computed: {
+    classes () {
+      return {
+        [`theme--${this.dark ? 'dark' : 'light'}`]: true
+      }
     }
   },
 
   mounted () {
-    this.onResize()
+    this.$vuetify.dark = this.dark
+  },
+
+  watch: {
+    dark () {
+      this.$vuetify.dark = this.dark
+    }
   },
 
   render (h) {
     const data = {
       staticClass: 'application',
-      'class': {
-        'application--dark': this.dark,
-        'application--light': !this.dark
-      },
+      'class': this.classes,
       attrs: { 'data-app': true },
       domProps: { id: this.id },
       directives: [{
@@ -44,6 +61,8 @@ export default {
       }]
     }
 
-    return h('div', data, this.$slots.default)
+    const wrapper = h('div', { staticClass: 'application--wrap' }, this.$slots.default)
+
+    return h('div', data, [wrapper])
   }
 }

@@ -13,16 +13,17 @@ export default {
 
   inheritAttrs: false,
 
+  data: () => ({
+    proxyClass: 'list__tile--active'
+  }),
+
   props: {
     activeClass: {
       type: String,
-      default: 'list__tile--active'
-    },
-    active: {
-      type: Boolean,
-      default: true
+      default: 'primary--text'
     },
     avatar: Boolean,
+    inactive: Boolean,
     tag: String
   },
 
@@ -30,9 +31,10 @@ export default {
     classes () {
       return {
         'list__tile': true,
-        'list__tile--link': this.isLink && this.active,
+        'list__tile--link': this.isLink && !this.inactive,
         'list__tile--avatar': this.avatar,
         'list__tile--disabled': this.disabled,
+        'list__tile--active': !this.to && this.isActive,
         [this.activeClass]: this.isActive
       }
     },
@@ -43,7 +45,7 @@ export default {
   },
 
   render (h) {
-    const isRouteLink = this.active && (this.href || this.to)
+    const isRouteLink = !this.inactive && this.isLink
     const { tag, data } = isRouteLink ? this.generateRouteLink() : {
       tag: this.tag || 'div',
       data: {

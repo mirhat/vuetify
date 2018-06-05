@@ -2,7 +2,7 @@ require('../../stylus/components/_alerts.styl')
 
 import VIcon from '../VIcon'
 
-import Contextualable from '../../mixins/contextualable'
+import Colorable from '../../mixins/colorable'
 import Toggleable from '../../mixins/toggleable'
 import Transitionable from '../../mixins/transitionable'
 
@@ -13,35 +13,48 @@ export default {
     VIcon
   },
 
-  mixins: [Contextualable, Toggleable, Transitionable],
+  mixins: [Colorable, Toggleable, Transitionable],
 
   props: {
     dismissible: Boolean,
-    hideIcon: Boolean,
-    icon: String
+    icon: String,
+    outline: Boolean,
+    type: {
+      type: String,
+      validator (val) {
+        return [
+          'info',
+          'error',
+          'success',
+          'warning'
+        ].includes(val)
+      }
+    }
   },
+
+  data: () => ({
+    defaultColor: 'error'
+  }),
 
   computed: {
     classes () {
-      return {
-        'alert': true,
+      const colorProp = (this.type && !this.color) ? 'type' : 'computedColor'
+      const classes = {
         'alert--dismissible': this.dismissible,
-        'error': this.error,
-        'info': this.info,
-        'primary': this.primary,
-        'secondary': this.secondary,
-        'success': this.success,
-        'warning': this.warning
+        'alert--outline': this.outline
       }
-    },
 
-    mdIcon () {
-      switch (true) {
-        case !!this.icon: return this.icon
-        case this.error: return 'warning'
-        case this.info: return 'info'
-        case this.success: return 'check_circle'
-        case this.warning: return 'priority_high'
+      return this.outline ? this.addTextColorClassChecks(classes, colorProp)
+        : this.addBackgroundColorClassChecks(classes, colorProp)
+    },
+    computedIcon () {
+      if (this.icon || !this.type) return this.icon
+
+      switch (this.type) {
+        case 'info': return 'info'
+        case 'error': return 'warning'
+        case 'success': return 'check_circle'
+        case 'warning': return 'priority_high'
       }
     }
   },
@@ -49,16 +62,15 @@ export default {
   render (h) {
     const children = [h('div', this.$slots.default)]
 
-    if (!this.hideIcon && this.mdIcon) {
+    if (this.computedIcon) {
       children.unshift(h('v-icon', {
         'class': 'alert__icon'
-      }, this.mdIcon))
+      }, this.computedIcon))
     }
 
     if (this.dismissible) {
       const close = h('a', {
         'class': 'alert__dismissible',
-        domProps: { href: 'javascript:;' },
         on: { click: () => this.$emit('input', false) }
       }, [
         h(VIcon, {
@@ -72,6 +84,7 @@ export default {
     }
 
     const alert = h('div', {
+      staticClass: 'alert',
       'class': this.classes,
       directives: [{
         name: 'show',

@@ -1,6 +1,6 @@
 {
   "name": "vuetify",
-  "version": "0.15.7",
+  "version": "0.17.7",
   "author": {
     "name": "John Leider",
     "email": "john@vuetifyjs.com"
@@ -13,14 +13,19 @@
   "scripts": {
     "watch": "cross-env TARGET=development webpack --config build/config.js --progress --hide-modules --watch",
     "dev": "cross-env NODE_ENV=development webpack-dev-server --config build/webpack.dev.config.js --open --hot",
+    "build": "npm run build:dist && npm run build:es5",
     "build:dev": "cross-env NODE_ENV=production node build/webpack.dev.config.js",
+    "build:dist": "rimraf dist && cross-env NODE_ENV=production webpack --config build/config.js --progress --hide-modules",
     "build:es5": "rimraf es5 && cross-env NODE_ENV=es5 babel src --out-dir es5",
-    "build": "rimraf dist && cross-env NODE_ENV=production webpack --config build/config.js --progress --hide-modules",
     "debug-build": "node --inspect --debug-brk build/config.js",
-    "test": "cross-env NODE_ENV=test jest",
+    "debug:test": "./node_modules/.bin/cross-env NODE_ENV=test node --inspect --inspect-brk ./node_modules/jest/bin/jest.js --no-cache --runInBand --verbose",
+    "test": "cross-env NODE_ENV=test jest -i",
+    "test:coverage": "cross-env NODE_ENV=test jest -i --coverage",
     "lint": "eslint --ext .js,.vue src",
+    "preparecommitmsg": "node dev/prepare-commit-message.js",
     "precommit": "yarn run lint && yarn test",
-    "prepush": "yarn run lint && yarn test"
+    "prepush": "yarn run lint && yarn test",
+    "prepare": "git update-index --skip-worktree .env"
   },
   "description": "Vue.js 2 Semantic Component Framework",
   "devDependencies": {
@@ -45,6 +50,7 @@
     "css-loader": "^0.28.7",
     "css-mqpacker": "^6.0.1",
     "cssnano": "^3.10.0",
+    "dotenv": "^4.0.0",
     "eslint": "^4.6.1",
     "eslint-config-standard": "^10.2.1",
     "eslint-config-vue": "^2.0.2",
@@ -62,6 +68,7 @@
     "friendly-errors-webpack-plugin": "^1.6.1",
     "function-bind": "^1.1.1",
     "husky": "^0.14.3",
+    "inquirer": "^4.0.1",
     "jest": "^21.1.0",
     "jest-cli": "^21.1.0",
     "jest-css-modules": "^1.1.0",
@@ -77,15 +84,16 @@
     "rimraf": "^2.6.2",
     "semver": "^5.4.1",
     "serialize-javascript": "^1.3.0",
+    "shelljs": "^0.7.8",
     "style-loader": "^0.18.2",
     "stylus": "^0.54.5",
     "stylus-loader": "^3.0.1",
     "uglifyjs-webpack-plugin": "^0.4.6",
-    "vue": "^2.4.4",
-    "vue-loader": "^13.0.4",
-    "vue-router": "^2.7.0",
-    "vue-server-renderer": "^2.4.4",
-    "vue-template-compiler": "^2.4.4",
+    "vue": "^2.5.4",
+    "vue-loader": "^13.5.0",
+    "vue-router": "^3.0.1",
+    "vue-server-renderer": "^2.5.4",
+    "vue-template-compiler": "^2.5.4",
     "webpack": "^3.6.0",
     "webpack-bundle-analyzer": "^2.9.0",
     "webpack-bundle-size-analyzer": "^2.7.0",
@@ -94,6 +102,9 @@
     "write-file-webpack-plugin": "^4.1.0"
   },
   "dependencies": {},
+  "peerDependencies": {
+    "vue": "^2.5.0"
+  },
   "engines": {
     "node": ">= 4.0.0",
     "npm": ">= 3.0.0"

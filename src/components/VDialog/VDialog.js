@@ -1,19 +1,33 @@
 require('../../stylus/components/_dialogs.styl')
 
-import Bootable from '../../mixins/bootable'
+// Mixins
+import Dependent from '../../mixins/dependent'
 import Detachable from '../../mixins/detachable'
 import Overlayable from '../../mixins/overlayable'
+import Stackable from '../../mixins/stackable'
 import Toggleable from '../../mixins/toggleable'
 
+// Directives
 import ClickOutside from '../../directives/click-outside'
+
+// Helpers
+import { getZIndex } from '../../util/helpers'
 
 export default {
   name: 'v-dialog',
 
-  mixins: [Bootable, Detachable, Overlayable, Toggleable],
+  mixins: [Dependent, Detachable, Overlayable, Stackable, Toggleable],
 
   directives: {
     ClickOutside
+  },
+
+  data () {
+    return {
+      isDependent: false,
+      stackClass: 'dialog__content__active',
+      stackMinZIndex: 200
+    }
   },
 
   props: {
@@ -21,13 +35,17 @@ export default {
     persistent: Boolean,
     fullscreen: Boolean,
     fullWidth: Boolean,
+    maxWidth: {
+      type: [String, Number],
+      default: 'none'
+    },
     origin: {
       type: String,
       default: 'center center'
     },
     width: {
       type: [String, Number],
-      default: 290
+      default: 'auto'
     },
     scrollable: Boolean,
     transition: {
@@ -46,31 +64,57 @@ export default {
         'dialog--stacked-actions': this.stackedActions && !this.fullscreen,
         'dialog--scrollable': this.scrollable
       }
+    },
+    contentClasses () {
+      return {
+        'dialog__content': true,
+        'dialog__content__active': this.isActive
+      }
     }
   },
 
   watch: {
     isActive (val) {
       if (val) {
-        !this.fullscreen && !this.hideOverlay && this.genOverlay()
-        this.fullscreen && this.hideScroll()
-        this.$refs.content.focus()
+        this.show()
       } else {
-        if (!this.fullscreen) this.removeOverlay()
-        else this.showScroll()
+        this.removeOverlay()
+        this.unbind()
       }
     }
   },
 
   mounted () {
     this.isBooted = this.isActive
-    this.$vuetify.load(() => (this.isActive && this.genOverlay()))
+    this.isActive && this.show()
+  },
+
+  beforeDestroy () {
+    if (typeof window !== 'undefined') this.unbind()
   },
 
   methods: {
     closeConditional (e) {
-      // close dialog if !persistent and clicked outside
-      return !this.persistent
+      // close dialog if !persistent, clicked outside and we're the topmost dialog.
+      // Since this should only be called in a capture event (bottom up), we shouldn't need to stop propagation
+      return !this.persistent &&
+        getZIndex(this.$refs.content) >= this.getMaxZIndex() &&
+        !this.$refs.content.contains(e.target)
+    },
+    show () {
+      !this.fullscreen && !this.hideOverlay && this.genOverlay()
+      this.fullscreen && this.hideScroll()
+      this.$refs.content.focus()
+      this.$listeners.keydown && this.bind()
+    },
+    bind () {
+      window.addEventListener('keydown', this.onKeydown)
+    },
+    unbind () {
+      window.removeEventListener('keydown', this.onKeydown)
+    },
+    onKeydown (e) {
+      this.$emit('keydown', e)
     }
   },
 
@@ -80,14 +124,22 @@ export default {
       'class': this.classes,
       ref: 'dialog',
       directives: [
-        { name: 'click-outside', value: this.closeConditional },
+        {
+          name: 'click-outside',
+          value: {
+            callback: this.closeConditional,
+            include: this.getOpenDependentElements
+          }
+        },
         { name: 'show', value: this.isActive }
-      ]
+      ],
+      on: { click: e => e.stopPropagation() }
     }
 
     if (!this.fullscreen) {
       data.style = {
-        width: isNaN(this.width) ? this.width : `${this.width}px`
+        maxWidth: this.maxWidth === 'none' ? undefined : (isNaN(this.maxWidth) ? this.maxWidth : `${this.maxWidth}px`),
+        width: this.width === 'auto' ? undefined : (isNaN(this.width) ? this.width : `${this.width}px`)
       }
     }
 
@@ -96,7 +148,6 @@ export default {
         'class': 'dialog__activator',
         on: {
           click: e => {
-            e.stopPropagation()
             if (!this.disabled) this.isActive = !this.isActive
           }
         }
@@ -109,11 +160,13 @@ export default {
         origin: this.origin
       }
     }, [h('div', data,
-      this.lazy && this.isBooted || !this.lazy ? this.$slots.default : null
+      this.showLazyContent(this.$slots.default)
     )])
 
     children.push(h('div', {
-      'class': 'dialog__content',
+      'class': this.contentClasses,
+      domProps: { tabIndex: -1 },
+      style: { zIndex: this.activeZIndex },
       ref: 'content'
     }, [dialog]))
 

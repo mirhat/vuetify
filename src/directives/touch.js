@@ -28,24 +28,23 @@ const touchmove = (event, wrapper) => {
 
 const handleGesture = (wrapper) => {
   const { touchstartX, touchendX, touchstartY, touchendY } = wrapper
+  const dirRatio = 0.5
+  const minDistance = 16
   wrapper.offsetX = touchendX - touchstartX
   wrapper.offsetY = touchendY - touchstartY
 
-  if (touchendX < touchstartX) {
-    wrapper.left && wrapper.left(wrapper)
+  if (Math.abs(wrapper.offsetY) < dirRatio * Math.abs(wrapper.offsetX)) {
+    wrapper.left && (touchendX < touchstartX - minDistance) && wrapper.left(wrapper)
+    wrapper.right && (touchendX > touchstartX + minDistance) && wrapper.right(wrapper)
   }
-  if (touchendX > touchstartX) {
-    wrapper.right && wrapper.right(wrapper)
-  }
-  if (touchendY < touchstartY) {
-    wrapper.up && wrapper.up(wrapper)
-  }
-  if (touchendY > touchstartY) {
-    wrapper.down && wrapper.down(wrapper)
+
+  if (Math.abs(wrapper.offsetX) < dirRatio * Math.abs(wrapper.offsetY)) {
+    wrapper.up && (touchendY < touchstartY - minDistance) && wrapper.up(wrapper)
+    wrapper.down && (touchendY > touchstartY + minDistance) && wrapper.down(wrapper)
   }
 }
 
-function inserted (el, { value }) {
+function inserted (el, { value }, { context }) {
   const wrapper = {
     touchstartX: 0,
     touchstartY: 0,
@@ -69,19 +68,27 @@ function inserted (el, { value }) {
 
   // Needed to pass unit tests
   if (!target) return
-  target.addEventListener('touchstart', e => touchstart(e, wrapper), options)
-  target.addEventListener('touchend', e => touchend(e, wrapper), options)
-  target.addEventListener('touchmove', e => touchmove(e, wrapper), options)
+
+  target._touchHandlers = Object.assign(Object(target._touchHandlers), {
+    [context._uid]: {
+      touchstart: e => touchstart(e, wrapper),
+      touchend: e => touchend(e, wrapper),
+      touchmove: e => touchmove(e, wrapper)
+    }
+  })
+  Object.keys(target._touchHandlers[context._uid]).forEach(eventName => {
+    target.addEventListener(eventName, target._touchHandlers[context._uid][eventName], options)
+  })
 }
 
-function unbind (el, { value }) {
+function unbind (el, { value }, { context }) {
   const target = value.parent ? el.parentNode : el
 
   if (!target) return
 
-  target.removeEventListener('touchstart', touchstart)
-  target.removeEventListener('touchend', touchend)
-  target.removeEventListener('touchmove', touchmove)
+  const handlers = target._touchHandlers[context._uid]
+  Object.keys(handlers).forEach(eventName => target.removeEventListener(eventName, handlers[eventName]))
+  delete target._touchHandlers[context._uid]
 }
 
 export default {

@@ -3,11 +3,13 @@ require('../../stylus/components/_text-fields.styl')
 
 import Colorable from '../../mixins/colorable'
 import Input from '../../mixins/input'
+import Maskable from '../../mixins/maskable'
+import { isMaskDelimiter } from '../../util/mask'
 
 export default {
   name: 'v-text-field',
 
-  mixins: [Colorable, Input],
+  mixins: [Colorable, Input, Maskable],
 
   inheritAttrs: false,
 
@@ -15,7 +17,9 @@ export default {
     return {
       initialValue: null,
       inputHeight: null,
-      badInput: false
+      internalChange: false,
+      badInput: false,
+      lazySelection: 0
     }
   },
 
@@ -63,7 +67,7 @@ export default {
       if (this.hasError) {
         classes['error--text'] = true
       } else {
-        return this.addColorClassChecks(classes)
+        return this.addTextColorClassChecks(classes)
       }
 
       return classes
@@ -81,11 +85,16 @@ export default {
     },
     inputValue: {
       get () {
-        return this.value
+        return this.lazyValue
       },
       set (val) {
-        this.lazyValue = val
-        this.$emit('input', val)
+        if (this.mask) {
+          this.lazyValue = this.unmaskText(this.maskText(this.unmaskText(val)))
+          this.setSelectionRange()
+        } else {
+          this.lazyValue = val
+          this.$emit('input', this.lazyValue)
+        }
       }
     },
     isDirty () {
@@ -108,8 +117,18 @@ export default {
       }
     },
     value (val) {
-      // Value was changed externally, update lazy
-      this.lazyValue = val
+      if (this.mask && !this.internalChange) {
+        const masked = this.maskText(this.unmaskText(val))
+        this.lazyValue = this.unmaskText(masked)
+
+        // Emit when the externally set value was modified internally
+        String(val) !== this.lazyValue && this.$nextTick(() => {
+          this.$refs.input.value = masked
+          this.$emit('input', this.lazyValue)
+        })
+      } else this.lazyValue = val
+
+      if (this.internalChange) this.internalChange = false
 
       !this.validateOnBlur && this.validate()
       this.shouldAutoGrow && this.calculateInputHeight()
@@ -117,10 +136,8 @@ export default {
   },
 
   mounted () {
-    this.$vuetify.load(() => {
-      this.shouldAutoGrow && this.calculateInputHeight()
-      this.autofocus && this.focus()
-    })
+    this.shouldAutoGrow && this.calculateInputHeight()
+    this.autofocus && this.focus()
   },
 
   methods: {
@@ -137,12 +154,17 @@ export default {
       })
     },
     onInput (e) {
+      this.mask && this.resetSelections(e.target)
       this.inputValue = e.target.value
       this.badInput = e.target.validity && e.target.validity.badInput
       this.shouldAutoGrow && this.calculateInputHeight()
     },
     blur (e) {
       this.isFocused = false
+      // Reset internalChange state
+      // to allow external change
+      // to persist
+      this.internalChange = false
 
       this.$nextTick(() => {
         this.validate()
@@ -150,11 +172,26 @@ export default {
       this.$emit('blur', e)
     },
     focus (e) {
+      if (!this.$refs.input) return
+
       this.isFocused = true
       if (document.activeElement !== this.$refs.input) {
         this.$refs.input.focus()
       }
       this.$emit('focus', e)
+    },
+    keyDown (e) {
+      // Prevents closing of a
+      // dialog when pressing
+      // enter
+      if (this.multiLine &&
+        this.isFocused &&
+        e.keyCode === 13
+      ) {
+        e.stopPropagation()
+      }
+
+      this.internalChange = true
     },
     genCounter () {
       return this.$createElement('div', {
@@ -175,7 +212,7 @@ export default {
           autofocus: this.autofocus,
           disabled: this.disabled,
           required: this.required,
-          value: this.lazyValue
+          value: this.maskText(this.lazyValue)
         },
         attrs: {
           ...this.$attrs,
@@ -186,7 +223,8 @@ export default {
         on: Object.assign(listeners, {
           blur: this.blur,
           input: this.onInput,
-          focus: this.focus
+          focus: this.focus,
+          keydown: this.keyDown
         }),
         ref: 'input'
       }
@@ -201,6 +239,10 @@ export default {
         data.domProps.type = this.type
       } else {
         data.domProps.rows = this.rows
+      }
+
+      if (this.mask) {
+        data.attrs.maxlength = this.masked.length
       }
 
       const children = [this.$createElement(tag, data)]
@@ -218,6 +260,15 @@ export default {
     clearableCallback () {
       this.inputValue = null
       this.$nextTick(() => this.$refs.input.focus())
+    },
+    resetSelections (input) {
+      if (!input.selectionEnd) return
+      this.selection = input.selectionEnd
+      this.lazySelection = 0
+
+      for (const char of input.value.substr(0, this.selection)) {
+        isMaskDelimiter(char) || this.lazySelection++
+      }
     }
   },
 

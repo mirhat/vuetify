@@ -31,7 +31,7 @@
     max-width: 80%
     overflow-y: auto
     overflow-x: hidden
-    transition: .3s $transition.swing
+    contain: content
     elevation(8)
 
     &--active
@@ -41,6 +41,10 @@
       border-top-left-radius: 0
       border-top-right-radius: 0
       border-top: 1px solid $material-light.dividers
+
+    & > .card
+      contain: content
+      backface-visibility: hidden
 
   &-transition
     &-enter
